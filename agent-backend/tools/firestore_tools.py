@@ -2,11 +2,35 @@ from google.cloud import firestore
 
 db = firestore.Client()
 
+# tools/firestore_tools.py
+
 def get_vehicle_details(plate: str):
-    doc = db.collection("vehicles").document(plate).get()
-    if doc.exists:
-        return doc.to_dict()
-    return {"error": "Vehicle not found"}
+    try:
+        # Normalize the plate format
+        plate = plate.strip().upper()
+        print("in_plate", plate)
+        # Try to match by querying Firestore
+        users_ref = db.collection("users")
+        query = users_ref.where("plate", "==", plate).stream()
+
+        print("query", query)
+
+        for doc in query:
+            return doc.to_dict()  # Return FIRST matching user
+
+        print("No exact plate match, trying partial match...")
+
+        # Try approximate match if needed (first 4 characters)
+        partial_query = users_ref.where("plate", ">=", plate[:4]).where("plate", "<=", plate[:4] + "\uf8ff").stream()
+        for doc in partial_query:
+            return doc.to_dict()
+
+        return None
+
+    except Exception as e:
+        print("🔥 Firestore plate lookup failed:", e)
+        return None
+
 
 def log_violation(data: dict):
     db.collection("violations").add(data)

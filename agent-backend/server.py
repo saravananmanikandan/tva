@@ -144,6 +144,8 @@ async def analyze_url(payload: dict = Body(...)):
     plate = result.get("number_plate", "")
     user_data = get_vehicle_details(plate)
 
+    print(plate, "plate")
+
     email_status = {"status": "no_user_found"}
 
     if user_data and "email" in user_data:

@@ -6,25 +6,18 @@ import axios from "axios";
 const AGENT = "https://traffic-agent-615548009762.us-central1.run.app";
 
 export default function Dashboard() {
-  // Dashboard Data
   const [violations, setViolations] = useState<any[]>([]);
   const [loadingViolations, setLoadingViolations] = useState(true);
-
-  // Upload Section
   const [imageUrl, setImageUrl] = useState("");
   const [analysis, setAnalysis] = useState<any>(null);
   const [uploadLoading, setUploadLoading] = useState(false);
-
-  // Dummy users
   const [userForm, setUserForm] = useState({ name: "", plate: "", email: "" });
   const [userMsg, setUserMsg] = useState("");
 
-  // Load violations from backend
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await axios.get("https://traffic-agent-615548009762.us-central1.run.app/violations");
-        console.log(res)
+        const res = await axios.get(`${AGENT}/violations`);
         setViolations(res.data.violations || []);
       } catch (e) {
         console.error(e);
@@ -34,14 +27,10 @@ export default function Dashboard() {
     load();
   }, []);
 
-  // Handle upload → analyze
   const analyzeImage = async () => {
-    console.log("Analyze Image is clicked")
     try {
       setUploadLoading(true);
-    console.log("Analyze Image is in try block")
-
-      const res = await axios.post("https://traffic-agent-615548009762.us-central1.run.app/analyze_url", { url: imageUrl });
+      const res = await axios.post(`${AGENT}/analyze_url`, { url: imageUrl });
       setAnalysis(res.data.vision_result);
     } catch (e: any) {
       setAnalysis({ error: e.message });
@@ -49,7 +38,6 @@ export default function Dashboard() {
     setUploadLoading(false);
   };
 
-  // Handle add user
   const handleUserSubmit = async () => {
     try {
       await axios.post(`${AGENT}/register_user`, userForm);
@@ -61,123 +49,115 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="p-6 space-y-12">
+    <div className="min-h-screen bg-gray-100 text-gray-900">
+      
+      {/* NAVBAR */}
+      <nav className="bg-white shadow-md px-6 py-4 flex justify-between items-center">
+        <h1 className="text-2xl font-bold">🛣️ TVA Dashboard</h1>
+        <div className="flex gap-3">
+          <button className="p-2 rounded-lg bg-gray-200 hover:bg-gray-300">⚙️</button>
+          <button className="p-2 rounded-lg bg-gray-200 hover:bg-gray-300">🔔</button>
+          <div className="size-10 rounded-full bg-gray-300" />
+        </div>
+      </nav>
 
-      {/* HEADER */}
-      <header className="bg-white p-5 rounded-xl shadow flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Tva Traffic Dashboard</h1>
-        <p className="text-gray-600">AI Powered Violation Detection</p>
-      </header>
+      {/* PAGE CONTAINER */}
+      <main className="p-6 max-w-7xl mx-auto">
+        <h2 className="text-3xl font-extrabold mb-6">Traffic Violation Dashboard</h2>
 
-      {/* =======================
-          SECTION 1 — VIOLATIONS GRID
-      ======================== */}
-      <section>
-        <h2 className="text-2xl font-semibold mb-4">Recent Violations</h2>
+        {/* GRID LAYOUT */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        {loadingViolations ? (
-          <p className="text-gray-500">Loading violations...</p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {violations.map((v, i) => (
-              <div key={i} className="p-4 bg-white shadow rounded-xl border">
+          {/* VIOLATIONS TABLE */}
+          <section className="lg:col-span-2 bg-white p-6 rounded-xl shadow-md">
+            <h3 className="text-xl font-bold mb-4">Recent Violations</h3>
 
-                <p className="font-bold text-lg">Plate: {v.number_plate || "Unknown"}</p>
-                <p className="text-gray-600 text-sm mt-1">{v.summary}</p>
-
-                <div className="mt-3 text-sm grid grid-cols-2 gap-2">
-                  {Object.entries(v)
-                    .filter(([key]) => key.includes("_violation"))
-                    .map(([key, value]) => (
-                      <p
-                        key={key}
-                        className={value ? "text-red-600" : "text-green-600"}
-                      >
-                        {key.replace("_", " ")}: {value ? "Yes" : "No"}
-                      </p>
-                    ))}
-                </div>
-              </div>
-            ))}
-
-            {violations.length === 0 && (
-              <p className="text-gray-500">No violations logged yet.</p>
+            {loadingViolations ? (
+              <p>Loading violations...</p>
+            ) : violations.length === 0 ? (
+              <p>No violations found.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="py-2 text-left">Plate</th>
+                    <th className="py-2 text-left">Summary</th>
+                    <th className="py-2 text-left">Severity</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {violations.map((v, i) => (
+                    <tr key={i} className="border-b hover:bg-gray-50">
+                      <td className="py-2">{v.number_plate}</td>
+                      <td className="py-2">{v.summary}</td>
+                      <td>
+                        <span
+                          className={`px-2 py-1 rounded-full text-white text-xs
+                          ${v.severity_score > 2 ? "bg-red-500" : "bg-yellow-500"}`}
+                        >
+                          {v.severity_score}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             )}
+          </section>
+
+          {/* SIDE PANEL */}
+          <div className="flex flex-col gap-6">
+            
+            {/* UPLOAD IMAGE */}
+            <section className="bg-white p-6 rounded-xl shadow-md">
+              <h3 className="text-xl font-bold mb-4">Analyze Image</h3>
+              <input
+                type="text"
+                placeholder="Enter image URL..."
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                className="border rounded w-full p-2"
+              />
+              <button
+                onClick={analyzeImage}
+                className="mt-3 w-full py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+              >
+                {uploadLoading ? "Analyzing..." : "Analyze"}
+              </button>
+
+              {analysis && (
+                <pre className="mt-4 bg-gray-100 p-3 rounded text-xs">
+                  {JSON.stringify(analysis, null, 2)}
+                </pre>
+              )}
+            </section>
+
+            {/* ADD USER FORM */}
+            <section className="bg-white p-6 rounded-xl shadow-md">
+              <h3 className="text-xl font-bold mb-4">Add User</h3>
+
+              {["name", "plate", "email"].map((field) => (
+                <input
+                  key={field}
+                  placeholder={field.toUpperCase()}
+                  value={userForm[field as keyof typeof userForm]}
+                  onChange={(e) => setUserForm({ ...userForm, [field]: e.target.value })}
+                  className="border rounded w-full p-2 mb-2"
+                />
+              ))}
+
+              <button
+                onClick={handleUserSubmit}
+                className="w-full py-2 rounded bg-green-600 text-white hover:bg-green-700"
+              >
+                Save User
+              </button>
+
+              {userMsg && <p className="text-green-700 text-sm mt-2">{userMsg}</p>}
+            </section>
           </div>
-        )}
-      </section>
-
-      {/* =======================
-          SECTION 2 — UPLOAD & ANALYZE
-      ======================== */}
-      <section>
-        <h2 className="text-2xl font-semibold mb-4">Upload Image for Analysis</h2>
-
-        <div className="bg-white p-6 rounded-xl shadow max-w-xl space-y-3 border">
-
-          <input
-            type="text"
-            placeholder="Paste image URL..."
-            value={imageUrl}
-            onChange={(e) => setImageUrl(e.target.value)}
-            className="border px-3 py-2 rounded w-full"
-          />
-
-          <button
-            onClick={analyzeImage}
-            disabled={uploadLoading}
-            className="bg-blue-600 text-white px-4 py-2 rounded w-full"
-          >
-            {uploadLoading ? "Analyzing..." : "Analyze Image"}
-          </button>
-
-          {analysis && (
-            <pre className="bg-gray-100 p-3 rounded overflow-x-auto text-sm">
-              {JSON.stringify(analysis, null, 2)}
-            </pre>
-          )}
         </div>
-      </section>
-
-      {/* =======================
-          SECTION 3 — ADD USER
-      ======================== */}
-      <section>
-        <h2 className="text-2xl font-semibold mb-4">Add Dummy User</h2>
-
-        <div className="bg-white p-6 rounded-xl shadow max-w-lg border space-y-4">
-
-          <input
-            className="border p-2 rounded w-full"
-            placeholder="Name"
-            value={userForm.name}
-            onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
-          />
-
-          <input
-            className="border p-2 rounded w-full"
-            placeholder="License Plate"
-            value={userForm.plate}
-            onChange={(e) => setUserForm({ ...userForm, plate: e.target.value })}
-          />
-
-          <input
-            className="border p-2 rounded w-full"
-            placeholder="Email"
-            value={userForm.email}
-            onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
-          />
-
-          <button
-            onClick={handleUserSubmit}
-            className="bg-green-600 text-white px-4 py-2 rounded w-full"
-          >
-            Save User
-          </button>
-
-          {userMsg && <p className="text-green-700">{userMsg}</p>}
-        </div>
-      </section>
+      </main>
     </div>
   );
 }
